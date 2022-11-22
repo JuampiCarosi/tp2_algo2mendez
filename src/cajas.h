@@ -1,6 +1,8 @@
 #ifndef CAJAS_H_
 #define CAJAS_H_
 
+#include <stdbool.h>
+
 #include "pokemon.h"
 
 typedef struct _caja_t caja_t;
@@ -55,7 +57,7 @@ pokemon_t *caja_obtener_pokemon(caja_t *caja, int n);
  * Devuelve la cantidad de pokemon a los que se les aplicó la función
  * correctamente.
  */
-int caja_recorrer(caja_t *caja, void (*funcion)(pokemon_t *));
+int caja_recorrer(caja_t *caja, bool (*funcion)(pokemon_t *));
 
 /*
  * Destruye una caja liberando toda la memoria asociada a la misma.

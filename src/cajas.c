@@ -5,27 +5,72 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "abb.h"
+#include "hash.h"
 #include "pokemon.h"
 
 #define FORMATO_LECTURA "%s\n"
 #define FORMATO_ESCRITURA "%s;%i;%i;%i\n"
 #define PROPIEDADES_POR_LINEA 4
 #define MAX_LINEA 70
+#define CANTIDAD_INICIALES_POKEMON 10
+#define CANTIDAD_DIGITOS_DE_CANTIDAD_DE_POKEMONES 12
 
 const int ERROR = 0;
 const int EXITO = 1;
 
 struct _caja_t {
-  abb_t *pokemones;
-  int tamanio_pokemones;
+  hash_t *pokemones;
+  hash_t *indices_de_pokemones;
 };
 
 void destructor_pokemon(void *pokemon) { free(pokemon); }
 
-abb_t *csv_a_abb_pokemones(FILE *pokemones_f) {
-  abb_t *pokemones = NULL;
-  pokemones = abb_crear((int (*)(void *, void *))strcmp);
+typedef struct lista_pokemones {
+  pokemon_t *pokemon;
+  struct lista_pokemones *siguiente;
+} lista_pokemones_t;
+
+int tamanio_vector_pokemones(const char *vector_indices_de_pokemones[]) {
+  int i = 0;
+  while (vector_indices_de_pokemones[i] != NULL) {
+    i++;
+  }
+  return i;
+}
+
+bool hash_a_vector(const char *clave, pokemon_t *valor, const char *vector_indices_de_pokemones[]) {
+  int tamanio = tamanio_vector_pokemones(vector_indices_de_pokemones);
+
+  vector_indices_de_pokemones[tamanio - 1] = pokemon_nombre(valor);
+  vector_indices_de_pokemones[tamanio] = NULL;
+
+  return true;
+}
+
+hash_t *hash_pokemones_ordernar(hash_t *pokemones, hash_t *indices_de_pokemones) {
+  const char *vector_indices_de_pokemones[hash_cantidad(pokemones) + 1];
+  vector_indices_de_pokemones[0] = NULL;
+
+  hash_con_cada_clave(pokemones, (bool (*)(const char *clave, void *valor, void *aux))hash_a_vector,
+                      indices_de_pokemones);
+
+  qsort(vector_indices_de_pokemones, (size_t)tamanio_vector_pokemones(vector_indices_de_pokemones), sizeof(char *),
+        (int (*)(const void *, const void *))strcmp);
+
+  for (int i = 0; i < tamanio_vector_pokemones(vector_indices_de_pokemones); i++) {
+    char indice[CANTIDAD_DIGITOS_DE_CANTIDAD_DE_POKEMONES];
+    sprintf(indice, "%i", i);
+
+    hash_insertar(indices_de_pokemones, indice, (void *)vector_indices_de_pokemones[i], NULL);
+  }
+
+  return pokemones;
+}
+
+hash_t *csv_a_hash_pokemones(FILE *pokemones_f) {
+  hash_t *pokemones = NULL;
+  pokemones = hash_crear(CANTIDAD_INICIALES_POKEMON);
+
   if (!pokemones) {
     return NULL;
   }
@@ -34,19 +79,20 @@ abb_t *csv_a_abb_pokemones(FILE *pokemones_f) {
   bool error = false;
   while (!error && fscanf(pokemones_f, FORMATO_LECTURA, linea) > 0) {
     pokemon_t *pokemon = pokemon_crear_desde_string(linea);
-    abb_t *nuevos_pokemones = NULL;
+    hash_t *nuevos_pokemones = NULL;
     if (!pokemon)
       error = true;
     else
-      nuevos_pokemones = abb_insertar(pokemones, pokemon);
+      nuevos_pokemones = hash_insertar(pokemones, pokemon_nombre(pokemon), pokemon, NULL);
 
     if (!nuevos_pokemones)
       error = true;
     else
       pokemones = nuevos_pokemones;
   }
+
   if (error && pokemones) {
-    abb_destruir_todo(pokemones, destructor_pokemon);
+    hash_destruir_todo(pokemones, destructor_pokemon);
     return NULL;
   }
   return pokemones;
@@ -60,25 +106,30 @@ caja_t *caja_cargar_archivo(const char *nombre_archivo) {
   if (!pokemones_f) {
     return NULL;
   }
-  caja_t *caja = malloc(sizeof(caja_t));
+  caja_t *caja = calloc(1, sizeof(caja_t));
   if (!caja) {
     fclose(pokemones_f);
     return NULL;
   }
 
-  abb_t *pokemones = NULL;
-  int tamanio_pokemones = 0;
-  pokemones = csv_a_abb_pokemones(pokemones_f);
+  caja->pokemones = csv_a_hash_pokemones(pokemones_f);
   fclose(pokemones_f);
 
-  if (!pokemones) {
+  if (!caja->pokemones) {
     free(caja);
     return NULL;
   }
 
-  caja->pokemones = pokemones;
-  caja->tamanio_pokemones = abb_tamanio(pokemones);
+  hash_t *indices_de_pokemones = hash_crear(CANTIDAD_INICIALES_POKEMON);
+  indices_de_pokemones = hash_pokemones_ordernar(caja->pokemones, indices_de_pokemones);
 
+  if (!indices_de_pokemones) {
+    hash_destruir_todo(caja->pokemones, destructor_pokemon);
+    free(caja);
+    return NULL;
+  }
+
+  caja->indices_de_pokemones = indices_de_pokemones;
   return caja;
 }
 
@@ -102,16 +153,16 @@ int caja_guardar_archivo(caja_t *caja, const char *nombre_archivo) {
     return 0;
   }
 
-  size_t recorridos =
-      abb_con_cada_elemento(caja->pokemones, INORDEN, (bool (*)(void *, void *))guardar_pokemon, pokemones_f);
+  size_t recorridos = hash_con_cada_clave(
+      caja->pokemones, (bool (*)(const char *clave, void *valor, void *aux))guardar_pokemon, pokemones_f);
 
   fclose(pokemones_f);
-  if (recorridos != abb_tamanio(caja->pokemones)) {
+  if (recorridos != hash_cantidad(caja->pokemones)) {
     limpiar_archivo(nombre_archivo);
     return 0;
   }
 
-  return caja->tamanio_pokemones;
+  return (int)hash_cantidad(caja->pokemones);
 }
 
 pokemon_t *duplicar_pokemon(pokemon_t *pokemon) {
@@ -123,10 +174,10 @@ pokemon_t *duplicar_pokemon(pokemon_t *pokemon) {
   return duplicado;
 }
 
-bool abb_insertar_en_mezcla(pokemon_t *pokemon, abb_t *mezcla) {
+bool hash_insertar_en_mezcla(pokemon_t *pokemon, hash_t *mezcla) {
   pokemon_t *duplicado = duplicar_pokemon(pokemon);
-  abb_t *arbol_insertado = abb_insertar(mezcla, duplicado);
-  if (!arbol_insertado) {
+  hash_t *hash_insertado = hash_insertar(mezcla, pokemon_nombre(duplicado), duplicado, NULL);
+  if (!hash_insertado) {
     free(duplicado);
     return false;
   }
@@ -135,31 +186,39 @@ bool abb_insertar_en_mezcla(pokemon_t *pokemon, abb_t *mezcla) {
 
 caja_t *caja_combinar(caja_t *caja1, caja_t *caja2) {
   if (!caja1 || !caja2) return NULL;
-  int i, j;
-  caja_t *caja_combinada = malloc(sizeof(caja_t));
+  caja_t *caja_combinada = calloc(1, sizeof(caja_t));
   if (!caja_combinada) return NULL;
 
-  if (caja1->tamanio_pokemones == 0 && caja2->tamanio_pokemones == 0) return caja_combinada;
+  if (hash_cantidad(caja1->pokemones) == 0 && hash_cantidad(caja2->pokemones) == 0) return caja_combinada;
 
-  abb_t *pokemones_combinados = abb_crear((int (*)(void *, void *))strcmp);
+  hash_t *pokemones_combinados = hash_crear(hash_cantidad(caja1->pokemones) + hash_cantidad(caja2->pokemones));
   if (!pokemones_combinados) {
     free(caja_combinada);
     return NULL;
   }
 
-  abb_con_cada_elemento(caja1->pokemones, INORDEN, (bool (*)(void *, void *))abb_insertar_en_mezcla,
-                        pokemones_combinados);
-  abb_con_cada_elemento(caja2->pokemones, INORDEN, (bool (*)(void *, void *))abb_insertar_en_mezcla,
-                        pokemones_combinados);
+  hash_con_cada_clave(caja1->pokemones, (bool (*)(const char *clave, void *valor, void *aux))hash_insertar_en_mezcla,
+                      pokemones_combinados);
+  hash_con_cada_clave(caja2->pokemones, (bool (*)(const char *clave, void *valor, void *aux))hash_insertar_en_mezcla,
+                      pokemones_combinados);
+
+  hash_t *indices_de_pokemones_combinados = hash_crear(hash_cantidad(pokemones_combinados));
+  const char *vector_indices_de_pokemones_combinados[hash_cantidad(pokemones_combinados) + 1];
+
+  hash_con_cada_clave(pokemones_combinados, (bool (*)(const char *clave, void *valor, void *aux))hash_a_vector,
+                      indices_de_pokemones_combinados);
+
+  qsort(vector_indices_de_pokemones_combinados,
+        (size_t)tamanio_vector_pokemones(vector_indices_de_pokemones_combinados), sizeof(char *),
+        (int (*)(const void *, const void *))strcmp);
 
   caja_combinada->pokemones = pokemones_combinados;
-  caja_combinada->tamanio_pokemones = abb_tamanio(caja_combinada->pokemones);
   return caja_combinada;
 }
 
 int caja_cantidad(caja_t *caja) {
-  if (!caja) return 0;
-  return caja->tamanio_pokemones;
+  if (!caja) return ERROR;
+  return (int)hash_cantidad(caja->pokemones);
 }
 
 typedef struct estructura_iteradora {
@@ -168,28 +227,23 @@ typedef struct estructura_iteradora {
   pokemon_t *pokemon_obtenido;
 } estructura_iteradora_t;
 
-bool abb_pokemones_obtener_indice(pokemon_t *pokemon, estructura_iteradora_t *contexto) {
-  if (contexto->recorridos == contexto->posicion_requerida) {
-    contexto->pokemon_obtenido = pokemon;
-    return false;
-  }
-  return true;
-}
-
 pokemon_t *caja_obtener_pokemon(caja_t *caja, int n) {
-  if (!caja || n < 0 || n >= caja->tamanio_pokemones) return NULL;
+  if (!caja || n < 0 || n >= hash_cantidad(caja->pokemones)) return NULL;
 
-  estructura_iteradora_t contexto = {0, n, NULL};
+  char indice[CANTIDAD_DIGITOS_DE_CANTIDAD_DE_POKEMONES];
+  sprintf(indice, "%i", n);
 
-  abb_con_cada_elemento(caja->pokemones, INORDEN, (bool (*)(void *, void *))abb_pokemones_obtener_indice, &contexto);
+  char *nombre_pokemon = hash_obtener(caja->pokemones, indice);
+  if (!nombre_pokemon) return NULL;
 
-  return contexto.pokemon_obtenido;
+  pokemon_t *pokemon = hash_obtener(caja->pokemones, nombre_pokemon);
+  return pokemon;
 }
 
-int caja_recorrer(caja_t *caja, void (*funcion)(pokemon_t *)) {
-  if (!caja || !funcion) return 0;
+int caja_recorrer(caja_t *caja, bool (*funcion)(pokemon_t *)) {
+  if (!caja || !funcion) return ERROR;
 
-  return (int)abb_con_cada_elemento(caja->pokemones, INORDEN, (bool (*)(void *, void *))funcion, NULL);
+  return (int)hash_con_cada_clave(caja->pokemones, (bool (*)(const char *clave, void *valor, void *aux))funcion, NULL);
 }
 
 void caja_destruir(caja_t *caja) {
@@ -199,6 +253,6 @@ void caja_destruir(caja_t *caja) {
     return;
   }
 
-  abb_destruir_todo(caja->pokemones, destructor_pokemon);
+  hash_destruir_todo(caja->pokemones, destructor_pokemon);
   free(caja);
 }

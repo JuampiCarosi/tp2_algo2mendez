@@ -8,7 +8,7 @@ ejemplo: ejemplo.c src/*
 	$(CC) $(CFLAGS) src/*.c ejemplo.c -o ejemplo 2>&1
 
 valgrind: ejemplo
-	valgrind $(VALGRIND_FLAGS) ./ejemplo 2>&1
+	valgrind $(VALGRIND_FLAGS) ./ejemplo pokemones.csv 2>&1
 
 valgrind-pruebas: pruebas
 	valgrind $(VALGRIND_FLAGS) ./pruebas 2>&1
