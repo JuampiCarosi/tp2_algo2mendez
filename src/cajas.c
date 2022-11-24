@@ -30,24 +30,7 @@ typedef struct lista_pokemones {
   struct lista_pokemones *siguiente;
 } lista_pokemones_t;
 
-int tamanio_vector_pokemones(const char *vector_indices_de_pokemones[]) {
-  int i = 0;
-  while (vector_indices_de_pokemones[i] != NULL) {
-    i++;
-  }
-  return i;
-}
-
-bool hash_a_vector(const char *clave, pokemon_t *valor, const char *vector_indices_de_pokemones[]) {
-  int tamanio = tamanio_vector_pokemones(vector_indices_de_pokemones);
-
-  vector_indices_de_pokemones[tamanio - 1] = pokemon_nombre(valor);
-  vector_indices_de_pokemones[tamanio] = NULL;
-
-  return true;
-}
-
-hash_t *hash_pokemones_ordernar(hash_t *pokemones, hash_t *indices_de_pokemones) {
+hash_t *hash_insertar_indice_pokemones(hash_t *indices_de_pokemones, pokemon_t *pokemon) {
   const char *vector_indices_de_pokemones[hash_cantidad(pokemones) + 1];
   vector_indices_de_pokemones[0] = NULL;
 
@@ -67,12 +50,12 @@ hash_t *hash_pokemones_ordernar(hash_t *pokemones, hash_t *indices_de_pokemones)
   return pokemones;
 }
 
-hash_t *csv_a_hash_pokemones(FILE *pokemones_f) {
-  hash_t *pokemones = NULL;
+int csv_a_hash_pokemones(FILE *pokemones_f, hash_t *pokemones, hash_t *indices_de_pokemones) {
   pokemones = hash_crear(CANTIDAD_INICIALES_POKEMON);
+  indices_de_pokemones = hash_crear(CANTIDAD_INICIALES_POKEMON);
 
   if (!pokemones) {
-    return NULL;
+    return ERROR;
   }
 
   char linea[MAX_LINEA];
@@ -80,22 +63,27 @@ hash_t *csv_a_hash_pokemones(FILE *pokemones_f) {
   while (!error && fscanf(pokemones_f, FORMATO_LECTURA, linea) > 0) {
     pokemon_t *pokemon = pokemon_crear_desde_string(linea);
     hash_t *nuevos_pokemones = NULL;
-    if (!pokemon)
+    hash_t *nuevo_indice = NULL;
+    if (!pokemon) {
       error = true;
-    else
+    } else {
       nuevos_pokemones = hash_insertar(pokemones, pokemon_nombre(pokemon), pokemon, NULL);
+      nuevo_indice = resultado(indices_de_pokemones, pokemon);
+    }
 
-    if (!nuevos_pokemones)
+    if (!nuevos_pokemones || !nuevo_indice) {
       error = true;
-    else
+    } else {
       pokemones = nuevos_pokemones;
+      indices_de_pokemones = nuevo_indice;
+    }
   }
 
   if (error && pokemones) {
     hash_destruir_todo(pokemones, destructor_pokemon);
-    return NULL;
+    return ERROR;
   }
-  return pokemones;
+  return EXITO;
 }
 
 caja_t *caja_cargar_archivo(const char *nombre_archivo) {
@@ -112,24 +100,14 @@ caja_t *caja_cargar_archivo(const char *nombre_archivo) {
     return NULL;
   }
 
-  caja->pokemones = csv_a_hash_pokemones(pokemones_f);
+  int resultado = csv_a_hash_pokemones(pokemones_f, caja->pokemones, caja->indices_de_pokemones);
   fclose(pokemones_f);
 
-  if (!caja->pokemones) {
-    free(caja);
+  if (resultado == ERROR) {
+    caja_destruir(caja);
     return NULL;
   }
 
-  hash_t *indices_de_pokemones = hash_crear(CANTIDAD_INICIALES_POKEMON);
-  indices_de_pokemones = hash_pokemones_ordernar(caja->pokemones, indices_de_pokemones);
-
-  if (!indices_de_pokemones) {
-    hash_destruir_todo(caja->pokemones, destructor_pokemon);
-    free(caja);
-    return NULL;
-  }
-
-  caja->indices_de_pokemones = indices_de_pokemones;
   return caja;
 }
 

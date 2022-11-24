@@ -16,7 +16,7 @@ bool mostrar_pokemon(pokemon_t *pokemones) {
 int main(int argc, char *argv[]) {
   caja_t *caja1 = caja_cargar_archivo(argv[1]);
 
-  printf("Pokemones de la caja 1\n");
+  // printf("Pokemones de la caja 1\n");
   // int cantidad_pokemones_recorridos = caja_recorrer(caja1, mostrar_pokemon);
   // printf("Cantidad de pokemones contados en caja 1: %i\n", cantidad_pokemones_recorridos);
 
