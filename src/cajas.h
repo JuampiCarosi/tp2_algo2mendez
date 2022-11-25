@@ -48,7 +48,7 @@ int caja_cantidad(caja_t *caja);
  * Obtiene el n-esimo pokemon dentro de la caja o NULL en caso de error.
  *
  */
-pokemon_t *caja_obtener_pokemon(caja_t *caja, int n);
+pokemon_t *caja_obtener_pokemon(caja_t *caja, char *nombre);
 
 /*
  * Aplica una función a cada uno de los pokemon de la caja (en orden
