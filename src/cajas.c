@@ -171,10 +171,15 @@ pokemon_t *caja_obtener_pokemon(caja_t *caja, char *nombre) {
   return hash_obtener(caja->pokemones, nombre);
 }
 
+bool funcion_recorrido_caja(const char *clave, void *valor, void *aux) {
+  (*(bool (**)(pokemon_t *))aux)((pokemon_t *)valor);
+  return true;
+}
+
 int caja_recorrer(caja_t *caja, bool (*funcion)(pokemon_t *)) {
   if (!caja || !funcion) return ERROR;
 
-  return (int)hash_con_cada_clave(caja->pokemones, (bool (*)(const char *clave, void *valor, void *aux))funcion, NULL);
+  return (int)hash_con_cada_clave(caja->pokemones, funcion_recorrido_caja, &funcion);
 }
 
 void caja_destruir(caja_t *caja) {

@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "src/cajas.h"
@@ -16,8 +15,6 @@
 #define BUSCAR 'B'
 #define SALIR 'Q'
 
-#define MAX_NOMBRE_ARCHIVO 100
-
 #define VERDE "\x1b[32;1m"
 #define BLANCO "\x1b[30;1m"
 #define GRIS "\x1b[37;1m"
@@ -27,8 +24,6 @@
 
 #define LINEA_SEPARADORA "---------------------------------\n"
 
-void destructor_caja(void *caja) { caja_destruir(caja); }
-
 char transformar_a_mayuscula(char letra) {
   if (letra >= 'a' && letra <= 'z') {
     return letra - 'a' + 'A';
@@ -36,8 +31,7 @@ char transformar_a_mayuscula(char letra) {
   return letra;
 }
 
-bool mostrar_pokemon(const char *clave, void *valor, void *aux) {
-  pokemon_t *pokemon = valor;
+bool mostrar_pokemon(pokemon_t *pokemon) {
   printf("  Nombre: %s\n    Nivel: %i\n    Ataque: %i\n    Defensa: %i\n", pokemon_nombre(pokemon),
          pokemon_nivel(pokemon), pokemon_ataque(pokemon), pokemon_defensa(pokemon));
   return true;
@@ -104,7 +98,12 @@ void opcion_cargar(hash_t *contenedor_de_cajas) {
   if (!caja) {
     printf(ROJO "Error al cargar el archivo'%s'\n" BLANCO, nombre_archivo);
   } else {
-    parsear_nombre_caja(nombre_archivo);
+    char *nombre_caja = parsear_nombre_caja(nombre_archivo);
+    if (!nombre_caja) {
+      printf(ROJO "Error al cargar el archivo'%s'\n" BLANCO, nombre_archivo);
+      caja_destruir(caja);
+      return;
+    }
     printf("\nCaja '%s' cargada correctamente!\n", nombre_archivo);
     hash_insertar(contenedor_de_cajas, nombre_archivo, caja, NULL);
   }
@@ -147,7 +146,7 @@ void opcion_mostrar(hash_t *contenedor_de_cajas) {
   if (!caja) {
     printf(ROJO "No existe la caja '%s'\n" BLANCO, nombre_caja);
   } else {
-    caja_recorrer(caja, (bool (*)(pokemon_t *))mostrar_pokemon);
+    caja_recorrer(caja, mostrar_pokemon);
   }
 }
 
@@ -228,7 +227,8 @@ int main(int argc, char *argv[]) {
 
   if (!validar_cajas_ingresadas(argv + 1, cantidad_cajas_ingresadas)) {
     printf(ROJO
-           "Las cajas no pueden contener espacios ni puntos, por favor cambie el nombre los archivos e intente "
+           "Las cajas no pueden contener espacios ni puntos y deben ser unicas, por favor cambie el nombre los "
+           "archivos e intente "
            "nuevamente");
     return 1;
   }
@@ -244,7 +244,7 @@ int main(int argc, char *argv[]) {
 
   administrador_de_menu(contenedor_de_cajas);
 
-  hash_destruir_todo(contenedor_de_cajas, destructor_caja);
+  destruir_contenedor_cajas(contenedor_de_cajas);
 
   return 0;
 }
