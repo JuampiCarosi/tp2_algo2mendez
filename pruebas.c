@@ -7,10 +7,10 @@
 #include "src/operaciones.h"
 
 void NombresSeParsean() {
-  char nombre[MAX_NOMBRE_ARCHIVO] = "caja1.txt";
-  char *nombre_parseado = parsear_nombre_caja(nombre);
-  pa2m_afirmar(strcmp(nombre_parseado, "caja1") == 0, "Se parsea el nombre de la caja correctamente");
-  free(nombre_parseado);
+  char nombre_archivo[MAX_NOMBRE_ARCHIVO] = "caja1.txt";
+  char *nombre = nombre_archivo_a_caja(nombre_archivo);
+  pa2m_afirmar(strcmp(nombre, "caja1") == 0, "Se parsea el nombre de la caja correctamente");
+  free(nombre);
 }
 
 void SeValidanCajasIngresadas() {
@@ -91,7 +91,7 @@ void SeCombinanCajas() {
 
   caja_t *caja_combinada = hash_obtener(contenedor_de_cajas, "caja3");
 
-  pa2m_afirmar(caja_cantidad(caja_combinada) == 7, "La cantidad de pokemones dentro de la caja combinada es 7");
+  pa2m_afirmar(caja_cantidad(caja_combinada) == 8, "La cantidad de pokemones dentro de la caja combinada es 8");
 
   contenedor_de_cajas = combinar_cajas(caja1, caja1, caja4, contenedor_de_cajas);
 
@@ -100,7 +100,7 @@ void SeCombinanCajas() {
 
   caja_combinada = hash_obtener(contenedor_de_cajas, "caja4");
 
-  pa2m_afirmar(caja_cantidad(caja_combinada) == 3, "La cantidad de pokemones dentro de la caja combinada es 3");
+  pa2m_afirmar(caja_cantidad(caja_combinada) == 6, "La cantidad de pokemones dentro de la caja combinada es 3");
 
   char caja_inexistente[MAX_NOMBRE_ARCHIVO] = "caja_inexistente";
 
@@ -128,7 +128,108 @@ void SeCombinanCajas() {
   destruir_contenedor_cajas(contenedor_de_cajas);
 }
 
+bool comparador_pokemones(pokemon_t *pokemon1, pokemon_t *pokemon2) {
+  return (strcmp(pokemon_nombre(pokemon1), pokemon_nombre(pokemon2)) == 0) &&
+         pokemon_nivel(pokemon1) == pokemon_nivel(pokemon2) && pokemon_ataque(pokemon1) == pokemon_ataque(pokemon2) &&
+         pokemon_defensa(pokemon1) == pokemon_defensa(pokemon2) && pokemon_ataque(pokemon1) == pokemon_ataque(pokemon2);
+}
+
+void CajaSeCargaArchivoYObtieneCantidad() {
+  caja_t *caja = caja_cargar_archivo("caja1.csv");
+  pa2m_afirmar(caja != NULL, "Se crea la caja");
+  pa2m_afirmar(caja_cantidad(caja) == 3, "La cantidad de pokemones dentro de la caja es 3");
+
+  pa2m_afirmar(caja_cargar_archivo("caja_inexistente.csv") == NULL, "No se crea la caja si el archivo no existe");
+  pa2m_afirmar(caja_cargar_archivo(NULL) == NULL, "No se crea la caja si el archivo es NULL");
+  pa2m_afirmar(caja_cantidad(NULL) == 0, "La cantidad de una caja NULL es 0");
+
+  caja_destruir(caja);
+}
+
+void CajaSeObtienenPokemones() {
+  caja_t *caja = caja_cargar_archivo("caja1.csv");
+  pokemon_t *pokemon1 = pokemon_crear_desde_string("pokemon1;10;15;10");
+  pokemon_t *pokemon2 = pokemon_crear_desde_string("pokemon2;3145;1345;1435");
+  pokemon_t *pokemon3 = pokemon_crear_desde_string("pokemon3;1;1;1");
+
+  pa2m_afirmar(comparador_pokemones(pokemon1, caja_obtener_pokemon(caja, 0)), "El pokemon 1 es correcto");
+  pa2m_afirmar(comparador_pokemones(pokemon2, caja_obtener_pokemon(caja, 1)), "El pokemon 2 es correcto");
+  pa2m_afirmar(comparador_pokemones(pokemon3, caja_obtener_pokemon(caja, 2)), "El pokemon 3 es correcto");
+
+  pa2m_afirmar(caja_obtener_pokemon(caja, 3) == NULL, "No se puede obtener un pokemon que no existe");
+  pa2m_afirmar(caja_obtener_pokemon(NULL, 1) == NULL, "Obtener pokemon de caja NULL devuelve NULL");
+
+  free(pokemon1);
+  free(pokemon2);
+  free(pokemon3);
+
+  caja_destruir(caja);
+}
+
+void CajaSeCombina() {
+  caja_t *caja1 = caja_cargar_archivo("caja1.csv");
+  caja_t *caja2 = caja_cargar_archivo("caja2.csv");
+
+  caja_t *caja_combinada = caja_combinar(caja1, caja2);
+
+  pa2m_afirmar(caja_cantidad(caja_combinada) == 8, "La cantidad de pokemones dentro de la caja combinada es 8");
+
+  pa2m_afirmar(caja_combinar(NULL, caja1) == NULL, "Si la caja 1 es NULL se devuelve NULL");
+  pa2m_afirmar(caja_combinar(caja1, NULL) == NULL, "Si la caja 2 es NULL se devuelve NULL");
+
+  caja_destruir(caja_combinada);
+  caja_destruir(caja1);
+  caja_destruir(caja2);
+}
+
+void nada() {}
+
+void CajaSeRecorre() {
+  caja_t *caja = caja_cargar_archivo("caja1.csv");
+
+  pa2m_afirmar(caja_recorrer(caja, nada) == 3, "Se recorren 3 pokemones");
+  pa2m_afirmar(caja_recorrer(caja, NULL) == 0, "Si la funcion es NULL se recorren 0 pokemones");
+  pa2m_afirmar(caja_recorrer(NULL, nada) == 0, "Si la caja es NULL se recorren 0 pokemones");
+
+  caja_destruir(caja);
+}
+
+void CajaSeGuardaArchivo() {
+  caja_t *caja = caja_cargar_archivo("caja1.csv");
+
+  pa2m_afirmar(caja_guardar_archivo(caja, "caja1_guardada.csv") == 3, "Se guarda la caja en un archivo");
+
+  caja_t *caja_cargada = caja_cargar_archivo("caja1_guardada.csv");
+
+  pokemon_t *pokemon1 = pokemon_crear_desde_string("pokemon1;10;15;10");
+  pokemon_t *pokemon2 = pokemon_crear_desde_string("pokemon2;3145;1345;1435");
+  pokemon_t *pokemon3 = pokemon_crear_desde_string("pokemon3;1;1;1");
+
+  pa2m_afirmar(comparador_pokemones(pokemon1, caja_obtener_pokemon(caja, 0)),
+               "El pokemon 1 de la caja cargada es correcto");
+  pa2m_afirmar(comparador_pokemones(pokemon2, caja_obtener_pokemon(caja, 1)),
+               "El pokemon 2 de la caja cargada es correcto");
+  pa2m_afirmar(comparador_pokemones(pokemon3, caja_obtener_pokemon(caja, 2)),
+               "El pokemon 3 de la caja cargada es correcto");
+  free(pokemon1);
+  free(pokemon2);
+  free(pokemon3);
+
+  pa2m_afirmar(caja_guardar_archivo(NULL, "caja1_guardada.csv") == 0, "No se guarda la caja si es NULL");
+  pa2m_afirmar(caja_guardar_archivo(caja, NULL) == 0, "No se guarda la caja si el archivo es NULL");
+
+  caja_destruir(caja_cargada);
+  caja_destruir(caja);
+}
+
 int main() {
+  pa2m_nuevo_grupo("Pruebas del TDA Caja");
+  CajaSeCargaArchivoYObtieneCantidad();
+  CajaSeObtienenPokemones();
+  CajaSeCombina();
+  CajaSeRecorre();
+  CajaSeGuardaArchivo();
+
   pa2m_nuevo_grupo("Pruebas validacion de nombres");
   NombresSeParsean();
   SeValidanCajasIngresadas();

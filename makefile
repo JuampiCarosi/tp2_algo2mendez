@@ -4,11 +4,14 @@ CC = gcc
 
 all: clean valgrind
 
-ejemplo: ejemplo.c src/*
-	$(CC) $(CFLAGS) src/*.c ejemplo.c -o ejemplo 2>&1
+main: main.c src/*
+	$(CC) $(CFLAGS) src/*.c main.c -o main 2>&1
 
-valgrind: ejemplo
-	valgrind $(VALGRIND_FLAGS) ./ejemplo caja1.csv  caja2.csv 2>&1
+valgrind: main
+	valgrind $(VALGRIND_FLAGS) ./main caja1.csv  caja2.csv 2>&1
+
+cajas: main
+	./main caja1.csv  caja2.csv 2>&1
 
 valgrind-pruebas: pruebas
 	valgrind $(VALGRIND_FLAGS) ./pruebas 2>&1

@@ -21,7 +21,7 @@ bool validar_cajas_ingresadas(char *nombres_cajas[], int cantidad_cajas);
  * Devuelve el string sin la extension.
  * En caso de error devuelve NULL
  */
-char *parsear_nombre_caja(const char *nombre_archivo);
+char *nombre_archivo_a_caja(const char *nombre_archivo);
 
 /*
  * Carga los archivos de cajas en un hash contenedor de cajas.

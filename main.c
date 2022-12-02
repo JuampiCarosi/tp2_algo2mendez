@@ -21,8 +21,14 @@
 #define ROJO "\x1b[31;1m"
 #define VIOLETA "\x1b[35;1m"
 #define CYAN "\x1b[36;1m"
+#define AMARILLO "\x1b[33;1m"
 
 #define LINEA_SEPARADORA "---------------------------------\n"
+
+#define MAX_INPUT_TECLADO 100
+
+#define DUMMY_STRING "X"
+#define DUMMY_CHAR 'X'
 
 char transformar_a_mayuscula(char letra) {
   if (letra >= 'a' && letra <= 'z') {
@@ -31,12 +37,17 @@ char transformar_a_mayuscula(char letra) {
   return letra;
 }
 
-bool mostrar_pokemon(pokemon_t *pokemon) {
-  printf("  Nombre: %s\n    Nivel: %i\n    Ataque: %i\n    Defensa: %i\n", pokemon_nombre(pokemon),
+/*
+ * Pre: Pokemon es no null.
+ */
+void mostrar_pokemon(pokemon_t *pokemon) {
+  printf(AMARILLO "\nNombre: %s\n" BLANCO "    Nivel: %i\n    Ataque: %i\n    Defensa: %i\n", pokemon_nombre(pokemon),
          pokemon_nivel(pokemon), pokemon_ataque(pokemon), pokemon_defensa(pokemon));
-  return true;
 }
 
+/*
+ * Pre: los parametros son no null.
+ */
 bool mostrar_caja(const char *clave, void *valor, void *aux) {
   printf("\n%i. Nombre: %s\n", *(int *)aux, clave);
   printf("   Cantidad de pokemones: %i\n", caja_cantidad(valor));
@@ -44,6 +55,9 @@ bool mostrar_caja(const char *clave, void *valor, void *aux) {
   return true;
 }
 
+/*
+ * Pre: los parametros son no null.
+ */
 bool mostrar_nombre_caja(void *valor, void *aux) {
   printf("-  %s\n", (char *)valor);
   return true;
@@ -79,14 +93,20 @@ void opcion_ayuda() {
   printf(CYAN "B" BLANCO ". Buscar cajas:" GRIS
               " Pide un nombre de pokemon y muestra la cantidad de cajas que contienen dicho pokemon y la "
               "lista con los nombres de las cajas.\n");
-  printf(CYAN "\nQ" BLANCO ". Atras\n");
+  printf(CYAN "Q" BLANCO ". Salir:" GRIS " Cierra el programa.\n" BLANCO);
 }
 
+/*
+ * Pre: los parametros son no null.
+ */
 void opcion_inventario(hash_t *contenedor_de_cajas) {
   int contador = 1;
   hash_con_cada_clave(contenedor_de_cajas, mostrar_caja, &contador);
 }
 
+/*
+ * Pre: los parametros son no null.
+ */
 void opcion_cargar(hash_t *contenedor_de_cajas) {
   char nombre_archivo[MAX_NOMBRE_ARCHIVO];
   printf("Ingrese el nombre del archivo: " GRIS);
@@ -98,7 +118,7 @@ void opcion_cargar(hash_t *contenedor_de_cajas) {
   if (!caja) {
     printf(ROJO "Error al cargar el archivo'%s'\n" BLANCO, nombre_archivo);
   } else {
-    char *nombre_caja = parsear_nombre_caja(nombre_archivo);
+    char *nombre_caja = nombre_archivo_a_caja(nombre_archivo);
     if (!nombre_caja) {
       printf(ROJO "Error al cargar el archivo'%s'\n" BLANCO, nombre_archivo);
       caja_destruir(caja);
@@ -109,6 +129,9 @@ void opcion_cargar(hash_t *contenedor_de_cajas) {
   }
 }
 
+/*
+ * Pre: los parametros son no null.
+ */
 void opcion_combinar(hash_t *contenedor_de_cajas) {
   char nombre_caja_1[MAX_NOMBRE_ARCHIVO];
   char nombre_caja_2[MAX_NOMBRE_ARCHIVO];
@@ -136,6 +159,9 @@ void opcion_combinar(hash_t *contenedor_de_cajas) {
   }
 }
 
+/*
+ * Pre: los parametros son no null.
+ */
 void opcion_mostrar(hash_t *contenedor_de_cajas) {
   char nombre_caja[MAX_NOMBRE_ARCHIVO];
   printf("Ingrese el nombre de la caja: " GRIS);
@@ -150,6 +176,9 @@ void opcion_mostrar(hash_t *contenedor_de_cajas) {
   }
 }
 
+/*
+ * Pre: los parametros son no null.
+ */
 void opcion_buscar(hash_t *contenedor_de_cajas) {
   char nombre_pokemon[MAX_NOMBRE_ARCHIVO];
   printf("Ingrese el nombre del pokemon: " GRIS);
@@ -166,13 +195,14 @@ void opcion_buscar(hash_t *contenedor_de_cajas) {
 }
 
 void administrador_de_menu(hash_t *contenedor_de_cajas) {
-  char input = ' ';
-  while (input != 'Q' && input != 'q') {
+  char input[MAX_INPUT_TECLADO] = DUMMY_STRING;
+  while (*input != 'Q' && *input != 'q') {
     printf("\n");
     mostrar_menu();
-    scanf(" %c", &input);
-    input = transformar_a_mayuscula(input);
-    switch (input) {
+    scanf(" %s", input);
+
+    char opcion_elegida = strlen(input) > 1 ? DUMMY_CHAR : transformar_a_mayuscula(*input);
+    switch (opcion_elegida) {
       case 'I':
         printf(VERDE "Mostrar Inventario\n" LINEA_SEPARADORA BLANCO);
         opcion_inventario(contenedor_de_cajas);
@@ -223,9 +253,10 @@ int main(int argc, char *argv[]) {
   }
 
   int cantidad_cajas_ingresadas = argc - 1;
+  char **cajas_a_cargar = argv + 1;
   hash_t *contenedor_de_cajas = NULL;
 
-  if (!validar_cajas_ingresadas(argv + 1, cantidad_cajas_ingresadas)) {
+  if (!validar_cajas_ingresadas(cajas_a_cargar, cantidad_cajas_ingresadas)) {
     printf(ROJO
            "Las cajas no pueden contener espacios ni puntos y deben ser unicas, por favor cambie el nombre los "
            "archivos e intente "
@@ -233,7 +264,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  cargar_cajas(&contenedor_de_cajas, cantidad_cajas_ingresadas, argv + 1);
+  cargar_cajas(&contenedor_de_cajas, cantidad_cajas_ingresadas, cajas_a_cargar);
 
   if (!contenedor_de_cajas || hash_cantidad(contenedor_de_cajas) == 0) {
     printf(ROJO "No se pudo cargar ninguna caja!\nPor favor, ingrese cajas validas e intentelo de nuevo");

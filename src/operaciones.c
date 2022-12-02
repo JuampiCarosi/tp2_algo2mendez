@@ -6,55 +6,7 @@
 
 #include "cajas.h"
 
-#define CANT_DIGITOS_INDICE_POKEMONES 100
-
-/*
- * PRE: el string no es NULL.
- */
-char *duplicar_cadena_texto(const char *string) {
-  char *string_duplicado = malloc(sizeof(char) * (strlen(string) + 1));
-  if (!string_duplicado) return NULL;
-  strcpy(string_duplicado, string);
-  return string_duplicado;
-}
-
-int tamanio_vector_pokemones(char *vector[]) {
-  int i = 0;
-  while (vector[i] != NULL) {
-    i++;
-  }
-  return i;
-}
-
-bool hash_a_vector(const char *clave, void *valor, void *aux) {
-  char **vector = aux;
-  int i = tamanio_vector_pokemones(vector);
-  printf("null en %d\n", i + 1);
-  vector[i] = duplicar_cadena_texto(clave);
-  vector[i + 1] = NULL;
-  return true;
-}
-
-hash_t *hash_pokemones_ordernar(hash_t *pokemones, hash_t *indices_de_pokemones) {
-  size_t cantidad_pokemones = hash_cantidad(pokemones);
-
-  char *vector_indices_de_pokemones[cantidad_pokemones + 1];
-  vector_indices_de_pokemones[0] = NULL;
-
-  hash_con_cada_clave(pokemones, hash_a_vector, indices_de_pokemones);
-
-  qsort(vector_indices_de_pokemones, cantidad_pokemones, sizeof(char *), (int (*)(const void *, const void *))strcmp);
-
-  for (int i = 0; i < cantidad_pokemones; i++) {
-    char indice[CANT_DIGITOS_INDICE_POKEMONES];
-    sprintf(indice, "%i", i);
-    hash_insertar(indices_de_pokemones, indice, (void *)vector_indices_de_pokemones[i], NULL);
-    free(vector_indices_de_pokemones[i]);
-  }
-  return pokemones;
-}
-
-char *parsear_nombre_caja(const char *nombre_archivo) {
+char *nombre_archivo_a_caja(const char *nombre_archivo) {
   int i = 0;
   char *nombre_caja = malloc(sizeof(char) * MAX_NOMBRE_ARCHIVO);
   if (!nombre_caja) {
@@ -73,7 +25,7 @@ hash_t *combinar_cajas(char nombre1[MAX_NOMBRE_ARCHIVO], char nombre2[MAX_NOMBRE
                        char archivo[MAX_NOMBRE_ARCHIVO], hash_t *contenedor_de_cajas) {
   if (!contenedor_de_cajas || !nombre1 || !nombre2 || !archivo) return NULL;
 
-  char *nombre3 = parsear_nombre_caja(archivo);
+  char *nombre3 = nombre_archivo_a_caja(archivo);
   if (hash_contiene(contenedor_de_cajas, nombre3)) {
     free(nombre3);
     return NULL;
@@ -111,18 +63,15 @@ void cargar_cajas(hash_t **contenedor_de_cajas, int cantidad_cajas, char *nombre
 
   for (int i = 0; i < cantidad_cajas; i++) {
     caja_t *caja = caja_cargar_archivo(nombres_cajas[i]);
-    char *nombre_caja_parseado = parsear_nombre_caja(nombres_cajas[i]);
+    char *nombre = nombre_archivo_a_caja(nombres_cajas[i]);
 
     if (!caja)
-      printf("No se pudo cargar la caja '%s'\n", nombre_caja_parseado);
+      printf("No se pudo cargar la caja '%s'\n", nombre);
     else
-      hash_insertar(*contenedor_de_cajas, nombre_caja_parseado, caja, NULL);
+      hash_insertar(*contenedor_de_cajas, nombre, caja, NULL);
 
-    free(nombre_caja_parseado);
+    free(nombre);
   }
-  hash_t *indices = hash_crear((size_t)cantidad_cajas);
-  hash_pokemones_ordernar(*contenedor_de_cajas, indices);
-  hash_destruir(indices);
 }
 
 typedef struct {
@@ -135,9 +84,19 @@ bool buscar_pokemon(const char *clave, void *valor, void *aux) {
   char *nombre = ((estructura_iteradora_cajas_t *)aux)->nombre;
   lista_t *lista = ((estructura_iteradora_cajas_t *)aux)->cajas;
 
-  if (caja_obtener_pokemon(caja, nombre)) {
-    lista_insertar(lista, (void *)clave);
+  bool seguir_recorriendo = true;
+  int i = 0;
+  while (i < caja_cantidad(caja) && seguir_recorriendo) {
+    pokemon_t *pokemon_actual = caja_obtener_pokemon(caja, i);
+    if (!pokemon_actual) {
+      seguir_recorriendo = false;
+    } else if (strcmp(pokemon_nombre(pokemon_actual), nombre) == 0) {
+      lista_insertar_en_posicion(lista, (void *)clave, 0);
+      seguir_recorriendo = false;
+    }
+    i++;
   }
+
   return true;
 }
 
