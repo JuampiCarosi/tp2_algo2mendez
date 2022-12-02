@@ -9,6 +9,12 @@
 
 #define MAX_NOMBRE_ARCHIVO 30
 #define MAX_NOMBRE_POKEMON 30
+
+typedef struct contenedor_cajas {
+  hash_t *cajas;
+  lista_t *cajas_con_pokemones_indexados;
+} contenedor_cajas_t;
+
 /*
  * Recibe un vector de strings con los nombres de los archivos de cajas a cargar.
  * Devuelve si los nombres de archivos son validos (no contienen puntos antes de la extension ni espacios).
@@ -34,7 +40,7 @@ void cargar_cajas(hash_t **contenedor_de_cajas, int cantidad_cajas, char *nombre
  * Devuelve una lista con los nombres de las cajas que contienen al pokemon.
  * En caso de error devuelve NULL
  */
-lista_t *buscar_cajas_con_pokemon(hash_t *contenedor_de_cajas, char nombre_pokemon[MAX_NOMBRE_POKEMON]);
+lista_t *buscar_cajas_con_pokemon(lista_t *cajas_con_pokemones_indexados, char *nombre_pokemon);
 
 /*
  * Recibe dos nombres de caja y un archivo de salida.
@@ -45,9 +51,13 @@ lista_t *buscar_cajas_con_pokemon(hash_t *contenedor_de_cajas, char nombre_pokem
 hash_t *combinar_cajas(char nombre1[MAX_NOMBRE_ARCHIVO], char nombre2[MAX_NOMBRE_ARCHIVO],
                        char nombre3[MAX_NOMBRE_ARCHIVO], hash_t *contenedor_de_cajas);
 
+size_t indexar_pokemones(hash_t *cajas, lista_t **cajas_con_pokemones_indexados);
+
 /*
  * Libera la memoria reservada por el hash contenedor de cajas.
  */
-void destruir_contenedor_cajas(hash_t *contenedor_de_cajas);
+void destruir_contenedor_cajas(contenedor_cajas_t contenedor_de_cajas);
+
+void destruir_indexacion_pokemones(void *elemento);
 
 #endif  // __OPERACIONES_H__

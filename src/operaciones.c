@@ -8,52 +8,6 @@
 
 #define CANT_DIGITOS_INDICE_POKEMONES 100
 
-/*
- * PRE: el string no es NULL.
- */
-char *duplicar_cadena_texto(const char *string) {
-  char *string_duplicado = malloc(sizeof(char) * (strlen(string) + 1));
-  if (!string_duplicado) return NULL;
-  strcpy(string_duplicado, string);
-  return string_duplicado;
-}
-
-int tamanio_vector_pokemones(char *vector[]) {
-  int i = 0;
-  while (vector[i] != NULL) {
-    i++;
-  }
-  return i;
-}
-
-bool hash_a_vector(const char *clave, void *valor, void *aux) {
-  char **vector = aux;
-  int i = tamanio_vector_pokemones(vector);
-  printf("null en %d\n", i + 1);
-  vector[i] = duplicar_cadena_texto(clave);
-  vector[i + 1] = NULL;
-  return true;
-}
-
-hash_t *hash_pokemones_ordernar(hash_t *pokemones, hash_t *indices_de_pokemones) {
-  size_t cantidad_pokemones = hash_cantidad(pokemones);
-
-  char *vector_indices_de_pokemones[cantidad_pokemones + 1];
-  vector_indices_de_pokemones[0] = NULL;
-
-  hash_con_cada_clave(pokemones, hash_a_vector, indices_de_pokemones);
-
-  qsort(vector_indices_de_pokemones, cantidad_pokemones, sizeof(char *), (int (*)(const void *, const void *))strcmp);
-
-  for (int i = 0; i < cantidad_pokemones; i++) {
-    char indice[CANT_DIGITOS_INDICE_POKEMONES];
-    sprintf(indice, "%i", i);
-    hash_insertar(indices_de_pokemones, indice, (void *)vector_indices_de_pokemones[i], NULL);
-    free(vector_indices_de_pokemones[i]);
-  }
-  return pokemones;
-}
-
 char *parsear_nombre_caja(const char *nombre_archivo) {
   int i = 0;
   char *nombre_caja = malloc(sizeof(char) * MAX_NOMBRE_ARCHIVO);
@@ -120,9 +74,6 @@ void cargar_cajas(hash_t **contenedor_de_cajas, int cantidad_cajas, char *nombre
 
     free(nombre_caja_parseado);
   }
-  hash_t *indices = hash_crear((size_t)cantidad_cajas);
-  hash_pokemones_ordernar(*contenedor_de_cajas, indices);
-  hash_destruir(indices);
 }
 
 typedef struct {
@@ -130,26 +81,26 @@ typedef struct {
   lista_t *cajas;
 } estructura_iteradora_cajas_t;
 
-bool buscar_pokemon(const char *clave, void *valor, void *aux) {
-  caja_t *caja = valor;
+bool buscar_pokemon(void *valor, void *aux) {
+  hash_t *caja = valor;
   char *nombre = ((estructura_iteradora_cajas_t *)aux)->nombre;
   lista_t *lista = ((estructura_iteradora_cajas_t *)aux)->cajas;
 
-  if (caja_obtener_pokemon(caja, nombre)) {
-    lista_insertar(lista, (void *)clave);
+  if (hash_contiene(caja, nombre)) {
+    lista_insertar(lista, (void *)nombre);
   }
   return true;
 }
 
-lista_t *buscar_cajas_con_pokemon(hash_t *contenedor_de_cajas, char nombre_pokemon[MAX_NOMBRE_POKEMON]) {
-  if (!contenedor_de_cajas || !nombre_pokemon) return NULL;
+lista_t *buscar_cajas_con_pokemon(lista_t *cajas_con_pokemones_indexados, char *nombre_pokemon) {
+  if (!cajas_con_pokemones_indexados || !nombre_pokemon) return NULL;
 
   lista_t *cajas = lista_crear();
   if (!cajas) return NULL;
 
   estructura_iteradora_cajas_t estructura = {.nombre = nombre_pokemon, .cajas = cajas};
 
-  hash_con_cada_clave(contenedor_de_cajas, buscar_pokemon, &estructura);
+  lista_con_cada_elemento(cajas_con_pokemones_indexados, buscar_pokemon, &estructura);
 
   return cajas;
 }
@@ -188,8 +139,59 @@ bool validar_cajas_ingresadas(char *nombres_cajas[], int cantidad_cajas) {
   return cajas_validas;
 }
 
+typedef struct {
+  char *nombre_caja;
+  hash_t *nombres;
+} caja_con_nombre_t;
+
+bool insertar_nombres(const char *clave, void *elemento, void *aux) {
+  caja_t *caja = elemento;
+  lista_t *lista = aux;
+
+  hash_t *caja_con_pokemones = hash_crear(3);
+
+  if (!caja_con_pokemones) return false;
+
+  for (int i = 0; i < caja_cantidad(caja); i++) {
+    pokemon_t *pokemon = caja_obtener_pokemon(caja, i);
+    const char *nombre_pokemon = pokemon_nombre(pokemon);
+
+    if (!pokemon || !nombre_pokemon) return false;
+    hash_insertar(caja_con_pokemones, nombre_pokemon, NULL, NULL);
+  }
+
+  caja_con_nombre_t *caja_con_nombre = malloc(sizeof(caja_con_nombre_t));
+  if (!caja_con_nombre) return false;
+  caja_con_nombre->nombre_caja = (char *)clave;
+  caja_con_nombre->nombres = caja_con_pokemones;
+
+  lista_insertar_en_posicion(lista, caja_con_nombre, 0);
+  return true;
+}
+
+void destruir_indexacion_pokemones(void *elemento) {
+  caja_con_nombre_t *caja_con_nombre = elemento;
+  hash_destruir(caja_con_nombre->nombres);
+  free(caja_con_nombre->nombre_caja);
+  free(caja_con_nombre);
+}
+
+size_t indexar_pokemones(hash_t *cajas, lista_t **cajas_con_pokemones_indexados) {
+  lista_t *lista = lista_crear();
+  if (!lista) return 0;
+
+  *cajas_con_pokemones_indexados = lista;
+
+  return hash_con_cada_clave(cajas, insertar_nombres, *cajas_con_pokemones_indexados);
+}
+
 void destructor_caja(void *caja) { caja_destruir(caja); }
 
-void destruir_contenedor_cajas(hash_t *contenedor_de_cajas) {
-  hash_destruir_todo(contenedor_de_cajas, destructor_caja);
+void destructor_lista_cajas(void *elemento) { hash_destruir(elemento); }
+
+void destruir_contenedor_cajas(contenedor_cajas_t contenedor_cajas) {
+  if (contenedor_cajas.cajas) hash_destruir_todo(contenedor_cajas.cajas, destructor_caja);
+
+  if (contenedor_cajas.cajas_con_pokemones_indexados)
+    lista_destruir_todo(contenedor_cajas.cajas_con_pokemones_indexados, destructor_lista_cajas);
 }

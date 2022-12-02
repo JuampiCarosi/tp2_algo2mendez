@@ -48,7 +48,7 @@ int caja_cantidad(caja_t *caja);
  * Obtiene el n-esimo pokemon dentro de la caja o NULL en caso de error.
  *
  */
-pokemon_t *caja_obtener_pokemon(caja_t *caja, char *nombre);
+pokemon_t *caja_obtener_pokemon(caja_t *caja, int n);
 
 /*
  * Aplica una función a cada uno de los pokemon de la caja (en orden
@@ -57,7 +57,7 @@ pokemon_t *caja_obtener_pokemon(caja_t *caja, char *nombre);
  * Devuelve la cantidad de pokemon a los que se les aplicó la función
  * correctamente.
  */
-int caja_recorrer(caja_t *caja, bool (*funcion)(pokemon_t *));
+int caja_recorrer(caja_t *caja, void (*funcion)(pokemon_t *));
 
 /*
  * Destruye una caja liberando toda la memoria asociada a la misma.
