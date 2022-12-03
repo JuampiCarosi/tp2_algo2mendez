@@ -34,57 +34,55 @@ void SeValidanCajasIngresadas() {
 
 void SeCarganCajas() {
   char *nombres_cajas[2] = {"caja1.csv", "caja2.csv"};
-  hash_t *contenedor_de_cajas = NULL;
-  cargar_cajas(&contenedor_de_cajas, 2, nombres_cajas);
+  hash_t *contenedor_de_cajas = cargar_cajas(2, nombres_cajas, NULL);
   pa2m_afirmar(hash_cantidad(contenedor_de_cajas) == 2, "Se cargan 2 cajas");
   pa2m_afirmar(hash_contiene(contenedor_de_cajas, "caja1") && hash_contiene(contenedor_de_cajas, "caja2"),
                "Se cargan las cajas con el nombre correcto");
   destruir_contenedor_cajas(contenedor_de_cajas);
 
-  cargar_cajas(&contenedor_de_cajas, 0, nombres_cajas);
-  pa2m_afirmar(contenedor_de_cajas == NULL, "No se cargan cajas si la cantidad de nombres es 0");
+  pa2m_afirmar(cargar_cajas(0, nombres_cajas, NULL) == NULL, "No se cargan cajas si la cantidad de nombres es 0");
 
-  cargar_cajas(&contenedor_de_cajas, 2, NULL);
-  pa2m_afirmar(contenedor_de_cajas == NULL, "No se cargan cajas si no se ingresan nombres");
+  pa2m_afirmar(cargar_cajas(2, NULL, NULL) == NULL, "No se cargan cajas si no se ingresan nombres");
 }
 
 void SeBuscanCajasConPokemon() {
   char *nombres_cajas[2] = {"caja1.csv", "caja2.csv"};
-  hash_t *contenedor_de_cajas = NULL;
-  cargar_cajas(&contenedor_de_cajas, 2, nombres_cajas);
+  hash_t *contenedor_de_cajas = cargar_cajas(2, nombres_cajas, NULL);
+  lista_t *lista_cajas_indexadas = indexar_cajas(contenedor_de_cajas);
 
   char pokemon1[MAX_NOMBRE_POKEMON] = "pokemon1";
   char pokemon3[MAX_NOMBRE_POKEMON] = "pokemon3";
 
-  lista_t *lista_cajas = buscar_cajas_con_pokemon(contenedor_de_cajas, pokemon1);
+  lista_t *lista_cajas = buscar_cajas_con_pokemon(lista_cajas_indexadas, pokemon1);
   pa2m_afirmar(lista_cajas != NULL, "Se crea la lista de cajas con el pokemon");
   pa2m_afirmar(lista_tamanio(lista_cajas) == 2, "Se agregan las 2 cajas con el pokemon");
   lista_destruir(lista_cajas);
 
-  lista_cajas = buscar_cajas_con_pokemon(contenedor_de_cajas, pokemon3);
+  lista_cajas = buscar_cajas_con_pokemon(lista_cajas_indexadas, pokemon3);
   pa2m_afirmar(lista_cajas != NULL, "Se crea la lista de cajas con el pokemon");
   pa2m_afirmar(lista_tamanio(lista_cajas) == 1, "Se agrega una caja con el pokemon");
   lista_destruir(lista_cajas);
 
-  pa2m_afirmar(buscar_cajas_con_pokemon(contenedor_de_cajas, NULL) == NULL,
+  pa2m_afirmar(buscar_cajas_con_pokemon(lista_cajas_indexadas, NULL) == NULL,
                "No se crea la lista si el pokemon es NULL");
 
   destruir_contenedor_cajas(contenedor_de_cajas);
+  destruir_lista_pokemones_indexados(lista_cajas_indexadas);
 
   pa2m_afirmar(buscar_cajas_con_pokemon(NULL, pokemon1) == NULL, "No se crea la lista si contenedor es NULL");
 }
 
 void SeCombinanCajas() {
   char *nombres_cajas[2] = {"caja1.csv", "caja2.csv"};
-  hash_t *contenedor_de_cajas = NULL;
-  cargar_cajas(&contenedor_de_cajas, 2, nombres_cajas);
+  hash_t *contenedor_de_cajas = cargar_cajas(2, nombres_cajas, NULL);
+  lista_t *lista_cajas_indexadas = indexar_cajas(contenedor_de_cajas);
 
   char caja1[MAX_NOMBRE_ARCHIVO] = "caja1";
   char caja2[MAX_NOMBRE_ARCHIVO] = "caja2";
   char caja3[MAX_NOMBRE_ARCHIVO] = "caja3.csv";
   char caja4[MAX_NOMBRE_ARCHIVO] = "caja4.csv";
 
-  contenedor_de_cajas = combinar_cajas(caja1, caja2, caja3, contenedor_de_cajas);
+  contenedor_de_cajas = combinar_cajas(caja1, caja2, caja3, contenedor_de_cajas, lista_cajas_indexadas);
 
   pa2m_afirmar(hash_cantidad(contenedor_de_cajas) == 3, "La cantidad de elementos es 3");
   pa2m_afirmar(hash_contiene(contenedor_de_cajas, "caja3"), "Se crea la caja combinada con el nombre corecto");
@@ -93,7 +91,7 @@ void SeCombinanCajas() {
 
   pa2m_afirmar(caja_cantidad(caja_combinada) == 8, "La cantidad de pokemones dentro de la caja combinada es 8");
 
-  contenedor_de_cajas = combinar_cajas(caja1, caja1, caja4, contenedor_de_cajas);
+  contenedor_de_cajas = combinar_cajas(caja1, caja1, caja4, contenedor_de_cajas, lista_cajas_indexadas);
 
   pa2m_afirmar(hash_cantidad(contenedor_de_cajas) == 4 && hash_contiene(contenedor_de_cajas, "caja4"),
                "Se puede mezclar la misma caja");
@@ -104,28 +102,32 @@ void SeCombinanCajas() {
 
   char caja_inexistente[MAX_NOMBRE_ARCHIVO] = "caja_inexistente";
 
-  pa2m_afirmar(combinar_cajas(caja1, caja_inexistente, caja3, contenedor_de_cajas) == NULL,
+  pa2m_afirmar(combinar_cajas(caja1, caja_inexistente, caja3, contenedor_de_cajas, lista_cajas_indexadas) == NULL,
                "No se crea la caja combinada si una de las cajas no existe");
 
-  pa2m_afirmar(combinar_cajas(caja1, caja2, caja1, contenedor_de_cajas) == NULL,
+  pa2m_afirmar(combinar_cajas(caja1, caja2, caja1, contenedor_de_cajas, lista_cajas_indexadas) == NULL,
                "No se crea la caja combinada si se repite el nombre de la caja combinada");
 
-  pa2m_afirmar(combinar_cajas(caja1, caja2, caja3, contenedor_de_cajas) == NULL,
+  pa2m_afirmar(combinar_cajas(caja1, caja2, caja3, contenedor_de_cajas, lista_cajas_indexadas) == NULL,
                "No puede sobreescribir un archivo ya escrito");
 
-  pa2m_afirmar(combinar_cajas(NULL, caja2, caja3, contenedor_de_cajas) == NULL,
+  pa2m_afirmar(combinar_cajas(NULL, caja2, caja3, contenedor_de_cajas, lista_cajas_indexadas) == NULL,
                "No se crea la caja combinada si el nombre de la primera caja es NULL");
 
-  pa2m_afirmar(combinar_cajas(caja1, NULL, caja3, contenedor_de_cajas) == NULL,
+  pa2m_afirmar(combinar_cajas(caja1, NULL, caja3, contenedor_de_cajas, lista_cajas_indexadas) == NULL,
                "No se crea la caja combinada si el nombre de la segunda caja es NULL");
 
-  pa2m_afirmar(combinar_cajas(caja1, caja2, NULL, contenedor_de_cajas) == NULL,
+  pa2m_afirmar(combinar_cajas(caja1, caja2, NULL, contenedor_de_cajas, lista_cajas_indexadas) == NULL,
                "No se crea la caja combinada si el nombre de la caja combinada es NULL");
 
-  pa2m_afirmar(combinar_cajas(caja1, caja2, caja3, NULL) == NULL,
+  pa2m_afirmar(combinar_cajas(caja1, caja2, caja3, NULL, lista_cajas_indexadas) == NULL,
                "No se crea la caja combinada si el contenedor de cajas es NULL");
 
+  pa2m_afirmar(combinar_cajas(caja1, caja2, caja3, contenedor_de_cajas, NULL) == NULL,
+               "No se crea la caja combinada si la lista de cajas indexadas es NULL");
+
   destruir_contenedor_cajas(contenedor_de_cajas);
+  destruir_lista_pokemones_indexados(lista_cajas_indexadas);
 }
 
 bool comparador_pokemones(pokemon_t *pokemon1, pokemon_t *pokemon2) {

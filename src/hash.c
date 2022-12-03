@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "operaciones.h"
+
 #define UMBRAL_FACTOR_CARGA 0.75
 
 typedef struct par {
@@ -29,16 +31,6 @@ size_t jenkins_one_at_a_time_hash(char *clave) {
   hash ^= (hash >> 11);
   hash += (hash << 15);
   return hash;
-}
-
-/*
- * PRE: el string no es NULL.
- */
-char *duplicar_string(const char *string) {
-  char *string_duplicado = malloc(sizeof(char) * (strlen(string) + 1));
-  if (!string_duplicado) return NULL;
-  strcpy(string_duplicado, string);
-  return string_duplicado;
 }
 
 hash_t *hash_crear(size_t capacidad) {

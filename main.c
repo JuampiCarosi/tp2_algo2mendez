@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "src/cajas.h"
@@ -107,7 +108,7 @@ void opcion_inventario(hash_t *contenedor_de_cajas) {
 /*
  * Pre: los parametros son no null.
  */
-void opcion_cargar(hash_t *contenedor_de_cajas) {
+void opcion_cargar(hash_t *contenedor_de_cajas, lista_t *lista_pokemones_indexados) {
   char nombre_archivo[MAX_NOMBRE_ARCHIVO];
   printf("Ingrese el nombre del archivo: " GRIS);
   scanf("%s", nombre_archivo);
@@ -122,17 +123,19 @@ void opcion_cargar(hash_t *contenedor_de_cajas) {
     if (!nombre_caja) {
       printf(ROJO "Error al cargar el archivo'%s'\n" BLANCO, nombre_archivo);
       caja_destruir(caja);
+      free(nombre_caja);
       return;
     }
-    printf("\nCaja '%s' cargada correctamente!\n", nombre_archivo);
     hash_insertar(contenedor_de_cajas, nombre_archivo, caja, NULL);
+    indexar_nueva_caja(lista_pokemones_indexados, caja, nombre_caja);
+    free(nombre_caja);
   }
 }
 
 /*
  * Pre: los parametros son no null.
  */
-void opcion_combinar(hash_t *contenedor_de_cajas) {
+void opcion_combinar(hash_t *contenedor_de_cajas, lista_t *lista_pokemones_indexados) {
   char nombre_caja_1[MAX_NOMBRE_ARCHIVO];
   char nombre_caja_2[MAX_NOMBRE_ARCHIVO];
   char nombre_archivo[MAX_NOMBRE_ARCHIVO];
@@ -149,7 +152,8 @@ void opcion_combinar(hash_t *contenedor_de_cajas) {
   scanf("%s", nombre_archivo);
   printf(BLANCO);
 
-  hash_t *resultado = combinar_cajas(nombre_caja_1, nombre_caja_2, nombre_archivo, contenedor_de_cajas);
+  hash_t *resultado =
+      combinar_cajas(nombre_caja_1, nombre_caja_2, nombre_archivo, contenedor_de_cajas, lista_pokemones_indexados);
   if (resultado) {
     printf("\nCaja '%s' combinada correctamente!\n", nombre_archivo);
   } else {
@@ -179,13 +183,13 @@ void opcion_mostrar(hash_t *contenedor_de_cajas) {
 /*
  * Pre: los parametros son no null.
  */
-void opcion_buscar(hash_t *contenedor_de_cajas) {
+void opcion_buscar(lista_t *lista_pokemones_indexados) {
   char nombre_pokemon[MAX_NOMBRE_ARCHIVO];
   printf("Ingrese el nombre del pokemon: " GRIS);
   scanf("%s", nombre_pokemon);
   printf(BLANCO);
 
-  lista_t *lista = buscar_cajas_con_pokemon(contenedor_de_cajas, nombre_pokemon);
+  lista_t *lista = buscar_cajas_con_pokemon(lista_pokemones_indexados, nombre_pokemon);
 
   printf("\nCajas que contienen al pokemon '%s':\n", nombre_pokemon);
   lista_con_cada_elemento(lista, mostrar_nombre_caja, NULL);
@@ -194,7 +198,7 @@ void opcion_buscar(hash_t *contenedor_de_cajas) {
   lista_destruir(lista);
 }
 
-void administrador_de_menu(hash_t *contenedor_de_cajas) {
+void administrador_de_menu(hash_t *contenedor_de_cajas, lista_t *lista_pokemones_indexados) {
   char input[MAX_INPUT_TECLADO] = DUMMY_STRING;
   while (*input != 'Q' && *input != 'q') {
     printf("\n");
@@ -211,13 +215,13 @@ void administrador_de_menu(hash_t *contenedor_de_cajas) {
         break;
       case 'C':
         printf(VERDE "Cargar Caja\n" LINEA_SEPARADORA BLANCO);
-        opcion_cargar(contenedor_de_cajas);
+        opcion_cargar(contenedor_de_cajas, lista_pokemones_indexados);
         printf(VERDE LINEA_SEPARADORA BLANCO);
 
         break;
       case 'M':
         printf(VERDE "Combinar Cajas\n" LINEA_SEPARADORA BLANCO);
-        opcion_combinar(contenedor_de_cajas);
+        opcion_combinar(contenedor_de_cajas, lista_pokemones_indexados);
         printf(VERDE LINEA_SEPARADORA BLANCO);
 
         break;
@@ -229,7 +233,7 @@ void administrador_de_menu(hash_t *contenedor_de_cajas) {
         break;
       case 'B':
         printf(VERDE "Buscar Pokemon\n" LINEA_SEPARADORA BLANCO);
-        opcion_buscar(contenedor_de_cajas);
+        opcion_buscar(lista_pokemones_indexados);
         printf(VERDE LINEA_SEPARADORA BLANCO);
 
         break;
@@ -254,7 +258,6 @@ int main(int argc, char *argv[]) {
 
   int cantidad_cajas_ingresadas = argc - 1;
   char **cajas_a_cargar = argv + 1;
-  hash_t *contenedor_de_cajas = NULL;
 
   if (!validar_cajas_ingresadas(cajas_a_cargar, cantidad_cajas_ingresadas)) {
     printf(ROJO
@@ -264,18 +267,44 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  cargar_cajas(&contenedor_de_cajas, cantidad_cajas_ingresadas, cajas_a_cargar);
+  lista_t *lista_fallidos = lista_crear();
+
+  if (!lista_fallidos) {
+    printf(ROJO "Hubo un error inesperado cargando las cajas, por favor intente nuevamente" BLANCO);
+    return 1;
+  }
+
+  hash_t *contenedor_de_cajas = cargar_cajas(cantidad_cajas_ingresadas, cajas_a_cargar, lista_fallidos);
 
   if (!contenedor_de_cajas || hash_cantidad(contenedor_de_cajas) == 0) {
     printf(ROJO "No se pudo cargar ninguna caja!\nPor favor, ingrese cajas validas e intentelo de nuevo");
+    lista_destruir_todo(lista_fallidos, free);
+    hash_destruir(contenedor_de_cajas);
+    return 1;
+  }
+
+  if (lista_tamanio(lista_fallidos) > 0) {
+    printf(ROJO "Las siguientes cajas no pudieron ser cargadas:\n" BLANCO);
+    lista_con_cada_elemento(lista_fallidos, mostrar_nombre_caja, NULL);
+    printf("\n");
+  }
+
+  lista_destruir_todo(lista_fallidos, free);
+
+  lista_t *lista_pokemones_indexados = indexar_cajas(contenedor_de_cajas);
+
+  if (!lista_pokemones_indexados) {
+    printf(ROJO "Hubo un error inesperado cargando las cajas, por favor intente nuevamente" BLANCO);
+    destruir_contenedor_cajas(contenedor_de_cajas);
     return 1;
   }
 
   printf(VIOLETA "\nBienvenido al sistema de almacenamiento de cajas de Pokemon\n" BLANCO);
 
-  administrador_de_menu(contenedor_de_cajas);
+  administrador_de_menu(contenedor_de_cajas, lista_pokemones_indexados);
 
   destruir_contenedor_cajas(contenedor_de_cajas);
+  destruir_lista_pokemones_indexados(lista_pokemones_indexados);
 
   return 0;
 }

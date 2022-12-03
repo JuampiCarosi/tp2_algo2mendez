@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "cajas.h"
 #include "hash.h"
 #include "lista.h"
 
@@ -27,14 +28,14 @@ char *nombre_archivo_a_caja(const char *nombre_archivo);
  * Carga los archivos de cajas en un hash contenedor de cajas.
  * En caso de error escribe NULL en el hash
  */
-void cargar_cajas(hash_t **contenedor_de_cajas, int cantidad_cajas, char *nombres_cajas[]);
+hash_t *cargar_cajas(int cantidad_cajas, char *nombres_cajas[], lista_t *lista_fallidos);
 
 /*
  * Recibe un hash contenedor de cajas y un nombre de pokemon.
  * Devuelve una lista con los nombres de las cajas que contienen al pokemon.
  * En caso de error devuelve NULL
  */
-lista_t *buscar_cajas_con_pokemon(hash_t *contenedor_de_cajas, char nombre_pokemon[MAX_NOMBRE_POKEMON]);
+lista_t *buscar_cajas_con_pokemon(lista_t *lista_pokemones_indexados, char nombre_pokemon[MAX_NOMBRE_POKEMON]);
 
 /*
  * Recibe dos nombres de caja y un archivo de salida.
@@ -43,11 +44,20 @@ lista_t *buscar_cajas_con_pokemon(hash_t *contenedor_de_cajas, char nombre_pokem
  * En caso de error devuelve NULL
  */
 hash_t *combinar_cajas(char nombre1[MAX_NOMBRE_ARCHIVO], char nombre2[MAX_NOMBRE_ARCHIVO],
-                       char nombre3[MAX_NOMBRE_ARCHIVO], hash_t *contenedor_de_cajas);
+                       char nombre3[MAX_NOMBRE_ARCHIVO], hash_t *contenedor_de_cajas,
+                       lista_t *lista_pokemones_indexados);
+
+lista_t *indexar_cajas(hash_t *contenedor_de_cajas);
+
+void indexar_nueva_caja(lista_t *lista_pokemones_indexados, caja_t *caja, const char *nombre_caja);
 
 /*
  * Libera la memoria reservada por el hash contenedor de cajas.
  */
 void destruir_contenedor_cajas(hash_t *contenedor_de_cajas);
+
+char *duplicar_string(const char *string);
+
+void destruir_lista_pokemones_indexados(lista_t *lista_pokemones_indexados);
 
 #endif  // __OPERACIONES_H__
