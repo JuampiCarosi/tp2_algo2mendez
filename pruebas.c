@@ -130,7 +130,7 @@ void SeCombinanCajas() {
   destruir_lista_pokemones_indexados(lista_cajas_indexadas);
 }
 
-bool comparador_pokemones(pokemon_t *pokemon1, pokemon_t *pokemon2) {
+bool comparacion_pokemones(pokemon_t *pokemon1, pokemon_t *pokemon2) {
   return (strcmp(pokemon_nombre(pokemon1), pokemon_nombre(pokemon2)) == 0) &&
          pokemon_nivel(pokemon1) == pokemon_nivel(pokemon2) && pokemon_ataque(pokemon1) == pokemon_ataque(pokemon2) &&
          pokemon_defensa(pokemon1) == pokemon_defensa(pokemon2) && pokemon_ataque(pokemon1) == pokemon_ataque(pokemon2);
@@ -154,9 +154,9 @@ void CajaSeObtienenPokemones() {
   pokemon_t *pokemon2 = pokemon_crear_desde_string("pokemon2;3145;1345;1435");
   pokemon_t *pokemon3 = pokemon_crear_desde_string("pokemon3;1;1;1");
 
-  pa2m_afirmar(comparador_pokemones(pokemon1, caja_obtener_pokemon(caja, 0)), "El pokemon 1 es correcto");
-  pa2m_afirmar(comparador_pokemones(pokemon2, caja_obtener_pokemon(caja, 1)), "El pokemon 2 es correcto");
-  pa2m_afirmar(comparador_pokemones(pokemon3, caja_obtener_pokemon(caja, 2)), "El pokemon 3 es correcto");
+  pa2m_afirmar(comparacion_pokemones(pokemon1, caja_obtener_pokemon(caja, 0)), "El pokemon 1 es correcto");
+  pa2m_afirmar(comparacion_pokemones(pokemon2, caja_obtener_pokemon(caja, 1)), "El pokemon 2 es correcto");
+  pa2m_afirmar(comparacion_pokemones(pokemon3, caja_obtener_pokemon(caja, 2)), "El pokemon 3 es correcto");
 
   pa2m_afirmar(caja_obtener_pokemon(caja, 3) == NULL, "No se puede obtener un pokemon que no existe");
   pa2m_afirmar(caja_obtener_pokemon(NULL, 1) == NULL, "Obtener pokemon de caja NULL devuelve NULL");
@@ -207,11 +207,11 @@ void CajaSeGuardaArchivo() {
   pokemon_t *pokemon2 = pokemon_crear_desde_string("pokemon2;3145;1345;1435");
   pokemon_t *pokemon3 = pokemon_crear_desde_string("pokemon3;1;1;1");
 
-  pa2m_afirmar(comparador_pokemones(pokemon1, caja_obtener_pokemon(caja, 0)),
+  pa2m_afirmar(comparacion_pokemones(pokemon1, caja_obtener_pokemon(caja, 0)),
                "El pokemon 1 de la caja cargada es correcto");
-  pa2m_afirmar(comparador_pokemones(pokemon2, caja_obtener_pokemon(caja, 1)),
+  pa2m_afirmar(comparacion_pokemones(pokemon2, caja_obtener_pokemon(caja, 1)),
                "El pokemon 2 de la caja cargada es correcto");
-  pa2m_afirmar(comparador_pokemones(pokemon3, caja_obtener_pokemon(caja, 2)),
+  pa2m_afirmar(comparacion_pokemones(pokemon3, caja_obtener_pokemon(caja, 2)),
                "El pokemon 3 de la caja cargada es correcto");
   free(pokemon1);
   free(pokemon2);
